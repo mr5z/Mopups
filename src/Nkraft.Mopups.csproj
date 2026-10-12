@@ -18,7 +18,6 @@
 	</PropertyGroup>
   
 	<PropertyGroup>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
     <Authors>Mark L, Tyson Hooker, Maksym Koshovyi, Aswin P G, Kirill Lyubimov, Martijn Van Dijk, Shane Neuville</Authors>
 		<Company>Nkraft</Company>
