@@ -10,7 +10,7 @@ A fork of [Mopups](https://github.com/LuckyDucko/Mopups), heavily **trimmed** do
 
 - .NET 10
 - Android 7.0 (API 24) or later
-- iOS 12.2 or later
+- iOS 15 or later
 
 ## Install
 
