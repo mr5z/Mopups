@@ -32,13 +32,14 @@ internal sealed partial class PopupPlatform
         var view = page.ToHandler(context).PlatformView as AView
             ?? throw new InvalidOperationException("The popup page's handler has no platform view.");
 
+        decorView.AddView(view);
+
         if (!page.DisableAndroidAccessibilityHandling)
         {
             _accessibility.Hide(page, host, below);
         }
 
         PopupBackPress.Watch(dispatcher, owner);
-        decorView.AddView(view);
         await PostAsync(view);
     }
 

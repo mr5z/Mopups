@@ -116,32 +116,57 @@ internal sealed class PopupNavigation : IPopupNavigation
         if (!_stack.Contains(page))
             return Task.CompletedTask;
 
-        removal = EnqueueAsync(() => RemoveCoreAsync(page, animate && page.IsAnimationEnabled));
-        _removals[page] = removal;
-        return removal;
+        // Registered before it is queued: on the main thread with nothing ahead of it, a removal without animation
+        // runs to its end, Forget included, inside EnqueueAsync.
+        var removed = new TaskCompletionSource();
+        _removals[page] = removed.Task;
+        CompleteAsync(removed, EnqueueAsync(() => RemoveCoreAsync(page, animate && page.IsAnimationEnabled)))
+            .FireAndForget();
+        return removed.Task;
     }
 
+    /// <summary>
+    /// Queues <paramref name="operation"/> after the ones before it. It may start right away, inside this call, on
+    /// the main thread with the queue idle; so the queue's lock is held only to take a place in line.
+    /// </summary>
     private Task EnqueueAsync(Func<Task> operation)
     {
+        Task previous;
+        var done = new TaskCompletionSource();
         lock (_queueLock)
         {
-            _operations = RunAfterAsync(_operations, operation);
-            return _operations;
+            previous = _operations;
+            _operations = done.Task;
+        }
+
+        return RunAfterAsync(previous, operation, done);
+    }
+
+    private static async Task RunAfterAsync(Task previous, Func<Task> operation, TaskCompletionSource done)
+    {
+        await previous.ConfigureAwait(false);
+        try
+        {
+            await MainThread.InvokeOnMainThreadAsync(operation);
+        }
+        finally
+        {
+            // The next operation runs whether this one failed or not; its caller got the failure.
+            done.SetResult();
         }
     }
 
-    private static async Task RunAfterAsync(Task previous, Func<Task> operation)
+    private static async Task CompleteAsync(TaskCompletionSource source, Task operation)
     {
         try
         {
-            await previous.ConfigureAwait(false);
+            await operation.ConfigureAwait(false);
+            source.SetResult();
         }
-        catch
+        catch (Exception ex)
         {
-            // Its caller got the failure; the operations after it still run.
+            source.SetException(ex);
         }
-
-        await MainThread.InvokeOnMainThreadAsync(operation);
     }
 
     private async Task PushCoreAsync(PopupPage page, bool animate)
